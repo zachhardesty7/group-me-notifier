@@ -39,13 +39,12 @@ def main():
 
     messages = getMessages(group)
 
-    updateLastSeenMessage(messages)
-
     matches = getMessagesWithKeywords(messages)
 
     if len(matches) > 0:
         emailBody = buildEmail(matches)
         sendEmail(emailBody, len(matches))
+        updateLastSeenMessage(messages)
 
 
 def buildEmail(messages):
@@ -100,7 +99,7 @@ def getMessages(group):
     if LAST_MESSAGE_ID == 0:
         return group.messages.list_all()
     else:
-        return group.messages.list_all(since_id=LAST_MESSAGE_ID)
+        return group.messages.list(since_id=LAST_MESSAGE_ID)
 
 
 def updateLastSeenMessage(messages):
