@@ -45,6 +45,9 @@ def main():
         emailBody = buildEmail(matches)
         sendEmail(emailBody, len(matches))
         updateLastSeenMessage(messages)
+        print('email sent with %i matches', len(matches))
+    else:
+        print('no new matches')
 
 
 def buildEmail(messages):
