@@ -21,7 +21,6 @@ from pytz import timezone
 GROUPME_TOKEN = os.environ['GROUPME_TOKEN']
 GROUPME_GROUP_ID = os.environ['GROUPME_GROUP_ID']
 LOCAL_TIMEZONE = os.environ['LOCAL_TIMEZONE']
-LAST_SEEN_MESSAGE = None
 KEYWORDS = os.environ['KEYWORDS'].split(',')
 EMAIL_TO_NAME = os.environ['EMAIL_TO_NAME']
 EMAIL_TO_ADDRESS = os.environ['EMAIL_TO_ADDRESS']
@@ -32,22 +31,21 @@ EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']
 EMAIL_HOST_PORT = os.environ['EMAIL_HOST_PORT']
 
 CLIENT = Client.from_token(GROUPME_TOKEN)
+LAST_MESSAGE_ID = os.environ['LAST_MESSAGE_ID']
 
 
 def main():
-    global LAST_SEEN_MESSAGE
-
     group = CLIENT.groups.get(GROUPME_GROUP_ID)
 
     messages = getMessages(group)
 
-    LAST_SEEN_MESSAGE = getLastSeenMessage(messages)
+    updateLastSeenMessage(messages)
 
     matches = getMessagesWithKeywords(messages)
 
-    emailBody = buildEmail(matches)
-
-    sendEmail(emailBody, len(matches))
+    if len(matches) > 0:
+        emailBody = buildEmail(matches)
+        sendEmail(emailBody, len(matches))
 
 
 def buildEmail(messages):
@@ -90,29 +88,29 @@ def getMessagesWithKeywords(messages):
         if message.text is not None:
             maybeAdd = False
             for keyword in KEYWORDS:
-                if(keyword in message.text):
+                if keyword in message.text:
                     maybeAdd = True
-            if(maybeAdd):
+            if maybeAdd:
                 matches.append(message)
 
     return matches
 
 
 def getMessages(group):
-    if LAST_SEEN_MESSAGE is None:
+    if LAST_MESSAGE_ID == 0:
         return group.messages.list_all()
     else:
-        return group.messages.list_all(since_id=LAST_SEEN_MESSAGE)
+        return group.messages.list_all(since_id=LAST_MESSAGE_ID)
 
 
-def getLastSeenMessage(messages):
+def updateLastSeenMessage(messages):
     lastMessage = None
 
     for message in messages:
         lastMessage = message
         break
 
-    return lastMessage
+    os.environ['LAST_MESSAGE_ID'] = lastMessage.id
 
 
 if __name__ == '__main__':
