@@ -142,16 +142,14 @@ def updateLastSeenMessage(messages):
     url = 'https://api.heroku.com/apps/' + HEROKU_APP_ID + '/config-vars'
 
     headers = {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/vnd.heroku+json; version=3',
         'Authorization': 'Bearer ' + HEROKU_ACCESS_TOKEN
     }
 
-    params = {
-        'LAST_MESSAGE_ID': lastMessage.id
-    }
+    payload = 'LAST_MESSAGE_ID=' + lastMessage.id
 
-    requests.patch(url, headers=headers, params=params)
+    requests.patch(url, headers=headers, data=payload)
 
 
 if __name__ == '__main__':
