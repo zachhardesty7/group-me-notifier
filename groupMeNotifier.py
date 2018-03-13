@@ -9,22 +9,27 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 # for timezone conversions
 from pytz import timezone
+import logging
 
 # Use clock.py to run program every so often
 
-# Groupy Docs
-# http://groupy.readthedocs.io/en/latest/pages/api.html
-
 # config vars
-# os.environ == heroku app global vars
-# replace os.environ[] with local value if desire
+# os.environ == (heroku) environment global vars
+# replace with local values if desired
+# ex for each above definition
+
+# 1234567890abcdef1234567890abcdef
 GROUPME_TOKEN = os.environ['GROUPME_TOKEN']
+# 12345678
 GROUPME_GROUP_ID = os.environ['GROUPME_GROUP_ID']
+# US/Central
 LOCAL_TIMEZONE = os.environ['LOCAL_TIMEZONE']
+# comma deliminated string of search terms
 KEYWORDS = os.environ['KEYWORDS'].split(',')
 EMAIL_TO_NAME = os.environ['EMAIL_TO_NAME']
 EMAIL_TO_ADDRESS = os.environ['EMAIL_TO_ADDRESS']
 EMAIL_FROM_ADDRESS = os.environ['EMAIL_FROM_ADDRESS']
+# secure123.bluehost.com
 EMAIL_HOST_URL = os.environ['EMAIL_HOST_URL']
 EMAIL_HOST_USERNAME = os.environ['EMAIL_HOST_USERNAME']
 EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']
@@ -33,21 +38,42 @@ EMAIL_HOST_PORT = os.environ['EMAIL_HOST_PORT']
 CLIENT = Client.from_token(GROUPME_TOKEN)
 LAST_MESSAGE_ID = os.environ['LAST_MESSAGE_ID']
 
+DEBUG = True
+if DEBUG:
+    logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
+
 
 def main():
+    # print(os.environ['LAST_MESSAGE_ID'])
     group = CLIENT.groups.get(GROUPME_GROUP_ID)
+
+    # for x in CLIENT.groups.get(GROUPME_GROUP_ID).messages.list(since_id="152096168211862649"):
+    #     print(x)
 
     messages = getMessages(group)
 
+    LOGGER.info('\nSTART ALL MESSAGES:')
+    for message in messages:
+        LOGGER.info(message)
+
     matches = getMessagesWithKeywords(messages)
 
-    if len(matches) > 0:
-        emailBody = buildEmail(matches)
-        sendEmail(emailBody, len(matches))
-        updateLastSeenMessage(messages)
-        print('email sent with %i matches', len(matches))
-    else:
-        print('no new matches')
+    LOGGER.info('\nSTART MATCHES:')
+    for message in matches:
+        LOGGER.info(message)
+
+    updateLastSeenMessage(messages)
+
+    # print(os.environ['LAST_MESSAGE_ID'])
+
+    if not DEBUG:
+        if len(matches) > 0:
+            emailBody = buildEmail(matches)
+            sendEmail(emailBody, len(matches))
+            print('email sent with %i matches' % len(matches))
+        else:
+            print('no new matches')
 
 
 def buildEmail(messages):
@@ -102,7 +128,7 @@ def getMessages(group):
     if LAST_MESSAGE_ID == 0:
         return group.messages.list_all()
     else:
-        return group.messages.list(since_id=LAST_MESSAGE_ID)
+        return group.messages.list(since_id=str(LAST_MESSAGE_ID))
 
 
 def updateLastSeenMessage(messages):
@@ -112,7 +138,12 @@ def updateLastSeenMessage(messages):
         lastMessage = message
         break
 
+    LOGGER.info('\nlast message')
+    LOGGER.info(lastMessage.id)
     os.environ['LAST_MESSAGE_ID'] = lastMessage.id
+    # LOGGER.info('\nlast message')
+    # LOGGER.info(messages[0].id)
+    # os.environ['LAST_MESSAGE_ID'] = messages[0].id
 
 
 if __name__ == '__main__':
