@@ -10,6 +10,8 @@ from email.mime.text import MIMEText
 # for timezone conversions
 from pytz import timezone
 import logging
+# to update environ var w Heroku
+import requests
 
 # Use clock.py to run program every so often
 
@@ -35,21 +37,19 @@ EMAIL_HOST_USERNAME = os.environ['EMAIL_HOST_USERNAME']
 EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']
 EMAIL_HOST_PORT = os.environ['EMAIL_HOST_PORT']
 
+HEROKU_ACCESS_TOKEN = os.environ['HEROKU_ACCESS_TOKEN']
+HEROKU_APP_ID = os.environ['HEROKU_APP_ID']
 CLIENT = Client.from_token(GROUPME_TOKEN)
 LAST_MESSAGE_ID = os.environ['LAST_MESSAGE_ID']
 
-DEBUG = True
+DEBUG = False
 if DEBUG:
     logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 
 def main():
-    # print(os.environ['LAST_MESSAGE_ID'])
     group = CLIENT.groups.get(GROUPME_GROUP_ID)
-
-    # for x in CLIENT.groups.get(GROUPME_GROUP_ID).messages.list(since_id="152096168211862649"):
-    #     print(x)
 
     messages = getMessages(group)
 
@@ -64,8 +64,6 @@ def main():
         LOGGER.info(message)
 
     updateLastSeenMessage(messages)
-
-    # print(os.environ['LAST_MESSAGE_ID'])
 
     if not DEBUG:
         if len(matches) > 0:
@@ -138,12 +136,22 @@ def updateLastSeenMessage(messages):
         lastMessage = message
         break
 
-    LOGGER.info('\nlast message')
-    LOGGER.info(lastMessage.id)
+    # setting os.environ really doesn't do anything apparently, using heroku api to update for my use case
     os.environ['LAST_MESSAGE_ID'] = lastMessage.id
-    # LOGGER.info('\nlast message')
-    # LOGGER.info(messages[0].id)
-    # os.environ['LAST_MESSAGE_ID'] = messages[0].id
+
+    url = 'https://api.heroku.com/apps/' + HEROKU_APP_ID + '/config-vars'
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.heroku+json; version=3',
+        'Authorization': 'Bearer ' + HEROKU_ACCESS_TOKEN
+    }
+
+    params = {
+        'LAST_MESSAGE_ID': lastMessage.id
+    }
+
+    requests.patch(url, headers=headers, params=params)
 
 
 if __name__ == '__main__':
