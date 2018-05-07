@@ -1,5 +1,5 @@
 # GroupMe python wrapper
-from groupy.client import Client
+from groupy import Client
 # for accessing Heroku sys vars
 import os
 # for the actual sending function
@@ -50,6 +50,11 @@ LOGGER = logging.getLogger(__name__)
 
 def main():
     group = CLIENT.groups.get(GROUPME_GROUP_ID)
+
+    # enable below to determine group ID to use
+    # for group in CLIENT.groups.list():
+    #     print(group)
+    #     print(group.id)
 
     messages = getMessages(group)
 
