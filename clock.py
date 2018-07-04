@@ -4,7 +4,7 @@ import subprocess
 sched = BlockingScheduler()
 
 
-@sched.scheduled_job('interval', minutes=30, timezone='UTC')
+@sched.scheduled_job('interval', minutes=20, timezone='UTC')
 def updatePriceData():
     print('Scheduled bi-hourly run')
     subprocess.run('python3 groupMeNotifier.py', shell=True)

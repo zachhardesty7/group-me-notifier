@@ -27,7 +27,7 @@ GROUPME_GROUP_ID = os.environ['GROUPME_GROUP_ID']
 # US/Central
 LOCAL_TIMEZONE = os.environ['LOCAL_TIMEZONE']
 # comma deliminated string of search terms
-KEYWORDS = os.environ['KEYWORDS'].split(',')
+KEYWORDS = os.environ['KEYWORDS']
 EMAIL_TO_NAME = os.environ['EMAIL_TO_NAME']
 EMAIL_TO_ADDRESS = os.environ['EMAIL_TO_ADDRESS']
 EMAIL_FROM_ADDRESS = os.environ['EMAIL_FROM_ADDRESS']
@@ -117,13 +117,9 @@ def getMessagesWithKeywords(messages):
 
     for message in messages:
         if message.text is not None:
-            maybeAdd = False
-            for keyword in KEYWORDS:
-                if keyword in message.text:
-                    maybeAdd = True
-            if maybeAdd:
+            if any(keyword in message.text for keyword in KEYWORDS.split(',')):
                 matches.append(message)
-
+                
     return matches
 
 
