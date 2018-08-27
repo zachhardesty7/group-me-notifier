@@ -82,15 +82,15 @@ def main():
 def buildEmail(messages):
     body = 'GroupMe Notifier has Found Matches!\n\n'
 
-    body += '%i new messages matching keywords:\n' % len(messages)
-    body += str(KEYWORDS) + '\n\n\n'
-
     for msg in messages:
         cst = timezone(LOCAL_TIMEZONE)
         time_local = msg.created_at.astimezone(cst).strftime('%I:%M:%S %p | %Y-%m-%d')
         body += str(time_local) + '\n'
         body += msg.name + ' - ' + msg.text + '\n\n'
 
+    body += '%i new messages matching keywords:\n' % len(messages)
+    body += str(KEYWORDS) + '\n\n\n'
+    
     return body
 
 
