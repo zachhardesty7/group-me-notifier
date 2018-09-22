@@ -53,7 +53,7 @@ def main():
 
     for id in GROUPME_GROUP_ID.split(','):
         group = CLIENT.groups.get(GROUPME_GROUP_ID)
-        messages = {messages**, getMessages(id)**}
+        messages = {**messages, **getMessages(id)}
 
     # enable below to determine group ID to use
     # for group in CLIENT.groups.list():
