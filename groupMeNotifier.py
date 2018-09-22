@@ -128,7 +128,7 @@ def getMessages(group):
     if LAST_MESSAGE_ID == 0:
         return group.messages.list_all()
     else:
-        return group.messages.list_since(message_id=str(LAST_MESSAGE_ID))
+        return group.messages.list_all(since_id=str(LAST_MESSAGE_ID))
 
 
 def updateLastSeenMessage(messages):
