@@ -1,5 +1,3 @@
-# GroupMe python wrapper
-from groupy import Client
 # for accessing Heroku sys vars
 import os
 # for the actual sending function
@@ -7,11 +5,31 @@ import smtplib
 # for emails
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-# for timezone conversions
-from pytz import timezone
+# to use secret file local data
+import json
 import logging
 # to update environ var w Heroku
 import requests
+# GroupMe python wrapper
+from groupy import Client
+# for timezone conversions
+from pytz import timezone
+
+# initialize logger
+DEBUG = False
+if DEBUG:
+    logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
+
+# import json file if present
+try:
+    with open('secret.json', 'r') as f:
+        DATA = json.load(f)
+        if not DATA:
+            DATA = {}
+except FileNotFoundError:
+    LOGGER.warning(
+        'no secret.json file present in project root to update, ignoring')
 
 # Use clock.py to run program every so often
 
@@ -21,58 +39,64 @@ import requests
 # ex for each above definition
 
 # 1234567890abcdef1234567890abcdef
-GROUPME_TOKEN = os.environ['GROUPME_TOKEN']
-# 12345678
-GROUPME_GROUP_ID = os.environ['GROUPME_GROUP_ID']
+GROUPME_TOKEN = os.getenv('GROUPME_TOKEN') or DATA['GROUPME_TOKEN']
+# 12345678,12345678,12345678,12345678
+GROUPME_GROUP_IDS = os.getenv('GROUPME_GROUP_IDS') or DATA['GROUPME_GROUP_IDS']
+if GROUPME_GROUP_IDS:
+    GROUPME_GROUP_IDS = GROUPME_GROUP_IDS.split(',')
 # US/Central
-LOCAL_TIMEZONE = os.environ['LOCAL_TIMEZONE']
+LOCAL_TIMEZONE = os.getenv('LOCAL_TIMEZONE') or DATA['LOCAL_TIMEZONE']
 # comma deliminated string of search terms
-KEYWORDS = os.environ['KEYWORDS']
-EMAIL_TO_NAME = os.environ['EMAIL_TO_NAME']
-EMAIL_TO_ADDRESS = os.environ['EMAIL_TO_ADDRESS']
-EMAIL_FROM_ADDRESS = os.environ['EMAIL_FROM_ADDRESS']
+KEYWORDS = os.getenv('KEYWORDS') or DATA['KEYWORDS']
+EMAIL_TO_NAME = os.getenv('EMAIL_TO_NAME') or DATA['EMAIL_TO_NAME']
+EMAIL_TO_ADDRESS = os.getenv('EMAIL_TO_ADDRESS') or DATA['EMAIL_TO_ADDRESS']
+EMAIL_FROM_ADDRESS = os.getenv('EMAIL_FROM_ADDRESS') or DATA['EMAIL_FROM_ADDRESS']
 # secure123.bluehost.com
-EMAIL_HOST_URL = os.environ['EMAIL_HOST_URL']
-EMAIL_HOST_USERNAME = os.environ['EMAIL_HOST_USERNAME']
-EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']
-EMAIL_HOST_PORT = os.environ['EMAIL_HOST_PORT']
+EMAIL_HOST_URL = os.getenv('EMAIL_HOST_URL') or DATA['EMAIL_HOST_URL']
+EMAIL_HOST_USERNAME = os.getenv('EMAIL_HOST_USERNAME') or DATA['EMAIL_HOST_USERNAME']
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD') or DATA['EMAIL_HOST_PASSWORD']
+EMAIL_HOST_PORT = os.getenv('EMAIL_HOST_PORT') or DATA['EMAIL_HOST_PORT']
 
-HEROKU_ACCESS_TOKEN = os.environ['HEROKU_ACCESS_TOKEN']
-HEROKU_APP_ID = os.environ['HEROKU_APP_ID']
+HEROKU_ACCESS_TOKEN = os.getenv('HEROKU_ACCESS_TOKEN') or DATA['HEROKU_ACCESS_TOKEN']
+HEROKU_APP_ID = os.getenv('HEROKU_APP_ID') or DATA['HEROKU_APP_ID']
 CLIENT = Client.from_token(GROUPME_TOKEN)
-LAST_MESSAGE_ID = os.environ['LAST_MESSAGE_ID']
-
-DEBUG = False
-if DEBUG:
-    logging.basicConfig(level=logging.INFO)
-LOGGER = logging.getLogger(__name__)
+# 123456789012345678,123456789012345678,123456789012345678,123456789012345678
+LAST_MESSAGE_IDS = os.getenv('LAST_MESSAGE_IDS') or DATA['LAST_MESSAGE_IDS']
+if LAST_MESSAGE_IDS:
+    LAST_MESSAGE_IDS = LAST_MESSAGE_IDS.split(',')
 
 
 def main():
-    messages = {}
+    allMessages = []
 
-    for id in GROUPME_GROUP_ID.split(','):
-        messages = {**messages, **getMessages(id)}
+    for i, groupID in enumerate(GROUPME_GROUP_IDS):
+        groups = CLIENT.groups.list_all(omit="memberships")
+        group = {}
+        for g in groups:
+            if g.id == groupID:
+                group = g
 
-    # enable below to determine group ID to use
-    # for group in CLIENT.groups.list():
-    #     print(group)
-    #     print(group.id)
+        last = LAST_MESSAGE_IDS[i]
+        if last == 0:
+            last = initializeLastID(group, i)
+        newMessages = getMessages(group, last)
+
+        updateLastSeenMessage(newMessages, i)
+        for message in newMessages:
+            allMessages.append(message)
 
     LOGGER.info('\nSTART ALL MESSAGES:')
-    for message in messages:
+    for message in allMessages:
         LOGGER.info(message)
 
-    matches = getMessagesWithKeywords(messages)
+    matches = filterMessages(allMessages)
 
     LOGGER.info('\nSTART MATCHES:')
     for message in matches:
         LOGGER.info(message)
 
-    updateLastSeenMessage(messages)
-
     if not DEBUG:
-        if len(matches) > 0:
+        if matches:
             emailBody = buildEmail(matches)
             sendEmail(emailBody, len(matches))
             print('email sent with %i matches' % len(matches))
@@ -91,7 +115,7 @@ def buildEmail(messages):
 
     body += 'target keywords:\n' % len(messages)
     body += str(KEYWORDS) + '\n\n\n'
-    
+
     return body
 
 
@@ -113,34 +137,46 @@ def sendEmail(emailBody, numMsgs):
     mail.quit()
 
 
-def getMessagesWithKeywords(messages):
+def filterMessages(messages):
     matches = []
 
     for message in messages:
         if message.text is not None:
             if any(keyword in message.text for keyword in KEYWORDS.split(',')):
                 matches.append(message)
-                
+
     return matches
 
 
-def getMessages(groupID):
-    group = CLIENT.groups.get(groupID)
-    if LAST_MESSAGE_ID == 0:
-        return group.messages.list_all()
-    else:
-        return group.messages.list_all(since_id=str(LAST_MESSAGE_ID))
+def getMessages(group, lastID):
+    return group.messages.list_all_after(lastID)
 
 
-def updateLastSeenMessage(messages):
-    lastMessage = None
+def initializeLastID(group, i):
+    LOGGER.log('now initialized, new messages will show in notification email')
+    recentMessages = group.messages.list()
+    for message in recentMessages:
+        LAST_MESSAGE_IDS[i] = message.id
+        return message.id
 
+
+def updateLastSeenMessage(messages, i):
     for message in messages:
-        lastMessage = message
+        LAST_MESSAGE_IDS[i] = message.id
         break
 
-    # setting os.environ really doesn't do anything apparently, using heroku api to update for my use case
-    os.environ['LAST_MESSAGE_ID'] = lastMessage.id
+    # setting os.environ really doesn't do anything apparently,
+    # using heroku api to update for my use case
+    os.environ['LAST_MESSAGE_IDS'] = ','.join(LAST_MESSAGE_IDS)
+
+    # set using json file
+    try:
+        DATA['LAST_MESSAGE_IDS'] = ','.join(LAST_MESSAGE_IDS)
+        with open("secret.json", "w") as f2:
+            json.dump(DATA, f2)
+    except FileNotFoundError:
+        LOGGER.warning('no secret.json file present in project root to update, ignoring')
+
 
     url = 'https://api.heroku.com/apps/' + HEROKU_APP_ID + '/config-vars'
 
@@ -150,7 +186,7 @@ def updateLastSeenMessage(messages):
         'Authorization': 'Bearer ' + HEROKU_ACCESS_TOKEN
     }
 
-    payload = 'LAST_MESSAGE_ID=' + lastMessage.id
+    payload = 'LAST_MESSAGE_ID=' + ','.join(LAST_MESSAGE_IDS)
 
     requests.patch(url, headers=headers, data=payload)
 
