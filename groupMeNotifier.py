@@ -124,7 +124,8 @@ def getMessagesWithKeywords(messages):
     return matches
 
 
-def getMessages(group):
+def getMessages(groupID):
+    group = CLIENT.groups.get(groupID)
     if LAST_MESSAGE_ID == 0:
         return group.messages.list_all()
     else:
