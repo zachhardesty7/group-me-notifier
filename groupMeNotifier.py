@@ -27,7 +27,7 @@ try:
         DATA = json.load(f)
         if not DATA:
             DATA = {}
-except FileNotFoundError:
+except (NameError, FileNotFoundError):
     LOGGER.warning('no secret.json file present in project root, ignoring update')
 
 # Use clock.py to run program every so often in Heroku
@@ -191,7 +191,7 @@ def updateLastSeenMessage(messages, i):
         DATA['LAST_MESSAGE_IDS'] = ','.join(LAST_MESSAGE_IDS)
         with open("secret.json", "w") as f2:
             json.dump(DATA, f2)
-    except FileNotFoundError:
+    except (NameError, FileNotFoundError):
         LOGGER.warning('no secret.json file present in project root, ignoring update')
 
     if USE_HEROKU_HOSTING.lower() == 'True':
