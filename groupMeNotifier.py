@@ -28,10 +28,9 @@ try:
         if not DATA:
             DATA = {}
 except FileNotFoundError:
-    LOGGER.warning(
-        'no secret.json file present in project root to update, ignoring')
+    LOGGER.warning('no secret.json file present in project root, ignoring update')
 
-# Use clock.py to run program every so often
+# Use clock.py to run program every so often in Heroku
 
 # config vars
 # os.environ == (heroku) environment global vars
@@ -57,6 +56,7 @@ try:
     EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD') or DATA['EMAIL_HOST_PASSWORD']
     EMAIL_HOST_PORT = os.getenv('EMAIL_HOST_PORT') or DATA['EMAIL_HOST_PORT']
 
+    USE_HEROKU_HOSTING = os.getenv('USE_HEROKU_HOSTING') or DATA['USE_HEROKU_HOSTING']
     HEROKU_ACCESS_TOKEN = os.getenv('HEROKU_ACCESS_TOKEN') or DATA['HEROKU_ACCESS_TOKEN']
     HEROKU_APP_ID = os.getenv('HEROKU_APP_ID') or DATA['HEROKU_APP_ID']
     CLIENT = Client.from_token(GROUPME_TOKEN)
@@ -74,6 +74,9 @@ def main():
 
     for i, groupID in enumerate(GROUPME_GROUP_IDS):
         group = {}
+        # list_all fails more than list().autopage()
+        # retrieving group by ID doesn't allow "omit" param
+        # without "omit" large groups overflow json request max size
         for g in CLIENT.groups.list(omit="memberships").autopage():
             if g.id == groupID:
                 group = g
@@ -110,12 +113,12 @@ def main():
 def buildEmail(messages):
     body = ''
 
-    for msg in messages:
+    for message in messages:
         cst = timezone(LOCAL_TIMEZONE)
-        time_local = msg.created_at.astimezone(cst).strftime('%I:%M:%S %p | %m%d%y')
+        time_local = message.created_at.astimezone(cst).strftime('%I:%M:%S %p | %m%d%y')
         body += str(time_local) + '\n'
-        body += msg.group + '\n'
-        body += msg.name + ' - ' + msg.text + '\n\n'
+        body += message.group + '\n'
+        body += message.name + ' - ' + message.text + '\n\n'
 
     body += '{0} target keywords:\n'.format(len(KEYWORDS.split(',')))
     body += str(KEYWORDS.replace(',', ', ')) + '\n\n\n'
@@ -125,7 +128,7 @@ def buildEmail(messages):
 
 def sendEmail(emailBody, numMsgs):
     emailMsg = MIMEMultipart('alternative')
-    emailMsg['Subject'] = 'GroupMe Digest - %i New Matches' % numMsgs
+    emailMsg['Subject'] = 'GroupMe Digest - {0} New Matches'.format(numMsgs)
     emailMsg['From'] = 'GroupMe Monitor'
     emailMsg['To'] = EMAIL_TO_NAME
 
@@ -154,12 +157,18 @@ def filterMessages(messages):
 
 def getMessages(group, lastID):
     try:
+        # use list_since().autopage() instead of list_all_after()
+        # to get most recent messages first
         return group.messages.list_since(lastID).autopage()
-    except:
-        LOGGER.warn('http authentication error, retrying')
+    except: # pylint: disable=W0702
+        # unsure of error type when raised by groupy
+        # error appears spontaneously with no apparent reason
+        LOGGER.warning('http authentication error, retrying')
         return getMessages(group, lastID)
 
 
+# if there is no most recent ID, set it now to most recent message
+# prevents dangerously long json responses from searching entire group
 def initializeLastID(group, i):
     LOGGER.log('now initialized, new messages will show in notification email')
     recentMessages = group.messages.list()
@@ -169,35 +178,34 @@ def initializeLastID(group, i):
 
 
 def updateLastSeenMessage(messages, i):
+    # generators cannot be indexed
     for message in messages:
         LAST_MESSAGE_IDS[i] = message.id
         break
 
-    # setting os.environ really doesn't do anything apparently,
-    # using heroku api to update for my use case
+    # setting os.environ doesn't affect Heroku, use api calls instead
     os.environ['LAST_MESSAGE_IDS'] = ','.join(LAST_MESSAGE_IDS)
 
-    # set using json file
+    # try to update through json file
     try:
         DATA['LAST_MESSAGE_IDS'] = ','.join(LAST_MESSAGE_IDS)
         with open("secret.json", "w") as f2:
             json.dump(DATA, f2)
     except FileNotFoundError:
-        LOGGER.warning(
-            'no secret.json file present in project root to update, ignoring')
+        LOGGER.warning('no secret.json file present in project root, ignoring update')
 
+    if USE_HEROKU_HOSTING.lower() == 'True':
+        url = 'https://api.heroku.com/apps/' + HEROKU_APP_ID + '/config-vars'
 
-    url = 'https://api.heroku.com/apps/' + HEROKU_APP_ID + '/config-vars'
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/vnd.heroku+json; version=3',
+            'Authorization': 'Bearer ' + HEROKU_ACCESS_TOKEN
+        }
 
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/vnd.heroku+json; version=3',
-        'Authorization': 'Bearer ' + HEROKU_ACCESS_TOKEN
-    }
+        payload = 'LAST_MESSAGE_ID=' + ','.join(LAST_MESSAGE_IDS)
 
-    payload = 'LAST_MESSAGE_ID=' + ','.join(LAST_MESSAGE_IDS)
-
-    requests.patch(url, headers=headers, data=payload)
+        requests.patch(url, headers=headers, data=payload)
 
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ include
 lib
 pip-selfcheck.json
 secret.json
-
+.vscode
 
 
 # Byte-compiled / optimized / DLL files

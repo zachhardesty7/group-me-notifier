@@ -1,5 +1,5 @@
-from apscheduler.schedulers.blocking import BlockingScheduler
 import subprocess
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 sched = BlockingScheduler()
 
