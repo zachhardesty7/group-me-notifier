@@ -194,7 +194,7 @@ def updateLastSeenMessage(messages, i):
     except (NameError, FileNotFoundError):
         LOGGER.warning('no secret.json file present in project root, ignoring update')
 
-    if USE_HEROKU_HOSTING.lower() == 'True':
+    if USE_HEROKU_HOSTING.lower() == 'true':
         url = 'https://api.heroku.com/apps/' + HEROKU_APP_ID + '/config-vars'
 
         headers = {
