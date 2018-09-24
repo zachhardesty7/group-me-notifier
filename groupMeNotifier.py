@@ -11,7 +11,7 @@ import logging
 # to update environ var w Heroku
 import requests
 # GroupMe python wrapper
-from groupy import Client
+from groupy.client import Client
 # for timezone conversions
 from pytz import timezone
 
@@ -37,42 +37,44 @@ except FileNotFoundError:
 # os.environ == (heroku) environment global vars
 # replace with local values if desired
 # ex for each above definition
+try:
+    # 1234567890abcdef1234567890abcdef
+    GROUPME_TOKEN = os.getenv('GROUPME_TOKEN') or DATA['GROUPME_TOKEN']
+    # 12345678,12345678,12345678,12345678
+    GROUPME_GROUP_IDS = os.getenv('GROUPME_GROUP_IDS') or DATA['GROUPME_GROUP_IDS']
+    if GROUPME_GROUP_IDS:
+        GROUPME_GROUP_IDS = GROUPME_GROUP_IDS.split(',')
+    # US/Central
+    LOCAL_TIMEZONE = os.getenv('LOCAL_TIMEZONE') or DATA['LOCAL_TIMEZONE']
+    # comma deliminated string of search terms
+    KEYWORDS = os.getenv('KEYWORDS') or DATA['KEYWORDS']
+    EMAIL_TO_NAME = os.getenv('EMAIL_TO_NAME') or DATA['EMAIL_TO_NAME']
+    EMAIL_TO_ADDRESS = os.getenv('EMAIL_TO_ADDRESS') or DATA['EMAIL_TO_ADDRESS']
+    EMAIL_FROM_ADDRESS = os.getenv('EMAIL_FROM_ADDRESS') or DATA['EMAIL_FROM_ADDRESS']
+    # secure123.bluehost.com
+    EMAIL_HOST_URL = os.getenv('EMAIL_HOST_URL') or DATA['EMAIL_HOST_URL']
+    EMAIL_HOST_USERNAME = os.getenv('EMAIL_HOST_USERNAME') or DATA['EMAIL_HOST_USERNAME']
+    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD') or DATA['EMAIL_HOST_PASSWORD']
+    EMAIL_HOST_PORT = os.getenv('EMAIL_HOST_PORT') or DATA['EMAIL_HOST_PORT']
 
-# 1234567890abcdef1234567890abcdef
-GROUPME_TOKEN = os.getenv('GROUPME_TOKEN') or DATA['GROUPME_TOKEN']
-# 12345678,12345678,12345678,12345678
-GROUPME_GROUP_IDS = os.getenv('GROUPME_GROUP_IDS') or DATA['GROUPME_GROUP_IDS']
-if GROUPME_GROUP_IDS:
-    GROUPME_GROUP_IDS = GROUPME_GROUP_IDS.split(',')
-# US/Central
-LOCAL_TIMEZONE = os.getenv('LOCAL_TIMEZONE') or DATA['LOCAL_TIMEZONE']
-# comma deliminated string of search terms
-KEYWORDS = os.getenv('KEYWORDS') or DATA['KEYWORDS']
-EMAIL_TO_NAME = os.getenv('EMAIL_TO_NAME') or DATA['EMAIL_TO_NAME']
-EMAIL_TO_ADDRESS = os.getenv('EMAIL_TO_ADDRESS') or DATA['EMAIL_TO_ADDRESS']
-EMAIL_FROM_ADDRESS = os.getenv('EMAIL_FROM_ADDRESS') or DATA['EMAIL_FROM_ADDRESS']
-# secure123.bluehost.com
-EMAIL_HOST_URL = os.getenv('EMAIL_HOST_URL') or DATA['EMAIL_HOST_URL']
-EMAIL_HOST_USERNAME = os.getenv('EMAIL_HOST_USERNAME') or DATA['EMAIL_HOST_USERNAME']
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD') or DATA['EMAIL_HOST_PASSWORD']
-EMAIL_HOST_PORT = os.getenv('EMAIL_HOST_PORT') or DATA['EMAIL_HOST_PORT']
-
-HEROKU_ACCESS_TOKEN = os.getenv('HEROKU_ACCESS_TOKEN') or DATA['HEROKU_ACCESS_TOKEN']
-HEROKU_APP_ID = os.getenv('HEROKU_APP_ID') or DATA['HEROKU_APP_ID']
-CLIENT = Client.from_token(GROUPME_TOKEN)
-# 123456789012345678,123456789012345678,123456789012345678,123456789012345678
-LAST_MESSAGE_IDS = os.getenv('LAST_MESSAGE_IDS') or DATA['LAST_MESSAGE_IDS']
-if LAST_MESSAGE_IDS:
-    LAST_MESSAGE_IDS = LAST_MESSAGE_IDS.split(',')
+    HEROKU_ACCESS_TOKEN = os.getenv('HEROKU_ACCESS_TOKEN') or DATA['HEROKU_ACCESS_TOKEN']
+    HEROKU_APP_ID = os.getenv('HEROKU_APP_ID') or DATA['HEROKU_APP_ID']
+    CLIENT = Client.from_token(GROUPME_TOKEN)
+    # 123456789012345678,123456789012345678,123456789012345678,123456789012345678
+    LAST_MESSAGE_IDS = os.getenv('LAST_MESSAGE_IDS') or DATA['LAST_MESSAGE_IDS']
+    if LAST_MESSAGE_IDS:
+        LAST_MESSAGE_IDS = LAST_MESSAGE_IDS.split(',')
+except NameError:
+    LOGGER.error('***all necessary global config not defined, see below***')
+    raise
 
 
 def main():
     allMessages = []
 
     for i, groupID in enumerate(GROUPME_GROUP_IDS):
-        groups = CLIENT.groups.list_all(omit="memberships")
         group = {}
-        for g in groups:
+        for g in CLIENT.groups.list(omit="memberships").autopage():
             if g.id == groupID:
                 group = g
 
@@ -83,6 +85,7 @@ def main():
 
         updateLastSeenMessage(newMessages, i)
         for message in newMessages:
+            message.group = group.name
             allMessages.append(message)
 
     LOGGER.info('\nSTART ALL MESSAGES:')
@@ -109,12 +112,13 @@ def buildEmail(messages):
 
     for msg in messages:
         cst = timezone(LOCAL_TIMEZONE)
-        time_local = msg.created_at.astimezone(cst).strftime('%I:%M:%S %p | %Y-%m-%d')
+        time_local = msg.created_at.astimezone(cst).strftime('%I:%M:%S %p | %m%d%y')
         body += str(time_local) + '\n'
+        body += msg.group + '\n'
         body += msg.name + ' - ' + msg.text + '\n\n'
 
-    body += 'target keywords:\n' % len(messages)
-    body += str(KEYWORDS) + '\n\n\n'
+    body += '{0} target keywords:\n'.format(len(KEYWORDS.split(',')))
+    body += str(KEYWORDS.replace(',', ', ')) + '\n\n\n'
 
     return body
 
@@ -149,7 +153,11 @@ def filterMessages(messages):
 
 
 def getMessages(group, lastID):
-    return group.messages.list_all_after(lastID)
+    try:
+        return group.messages.list_since(lastID).autopage()
+    except:
+        LOGGER.warn('http authentication error, retrying')
+        return getMessages(group, lastID)
 
 
 def initializeLastID(group, i):
@@ -175,7 +183,8 @@ def updateLastSeenMessage(messages, i):
         with open("secret.json", "w") as f2:
             json.dump(DATA, f2)
     except FileNotFoundError:
-        LOGGER.warning('no secret.json file present in project root to update, ignoring')
+        LOGGER.warning(
+            'no secret.json file present in project root to update, ignoring')
 
 
     url = 'https://api.heroku.com/apps/' + HEROKU_APP_ID + '/config-vars'
