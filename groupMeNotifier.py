@@ -203,7 +203,7 @@ def updateLastSeenMessage(messages, i):
             'Authorization': 'Bearer ' + HEROKU_ACCESS_TOKEN
         }
 
-        payload = 'LAST_MESSAGE_ID=' + ','.join(LAST_MESSAGE_IDS)
+        payload = 'LAST_MESSAGE_IDS=' + ','.join(LAST_MESSAGE_IDS)
 
         requests.patch(url, headers=headers, data=payload)
 
