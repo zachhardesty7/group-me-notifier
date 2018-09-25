@@ -86,7 +86,11 @@ def main():
             last = initializeLastID(group, i)
         newMessages = getMessages(group, last)
 
-        updateLastSeenMessage(newMessages, i)
+        # generators cannot be indexed
+        for message in newMessages:
+            LAST_MESSAGE_IDS[i] = message.id
+            break
+
         for message in newMessages:
             message.group = group.name
             allMessages.append(message)
@@ -108,6 +112,8 @@ def main():
             print('email sent with %i matches' % len(matches))
         else:
             print('no new matches')
+
+    updateLastSeenMessage() # will restart program
 
 
 def buildEmail(messages):
@@ -177,12 +183,7 @@ def initializeLastID(group, i):
         return message.id
 
 
-def updateLastSeenMessage(messages, i):
-    # generators cannot be indexed
-    for message in messages:
-        LAST_MESSAGE_IDS[i] = message.id
-        break
-
+def updateLastSeenMessage():
     # setting os.environ doesn't affect Heroku, use api calls instead
     os.environ['LAST_MESSAGE_IDS'] = ','.join(LAST_MESSAGE_IDS)
 
