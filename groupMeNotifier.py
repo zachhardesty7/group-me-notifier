@@ -155,7 +155,8 @@ def filterMessages(messages):
 
     for message in messages:
         if message.text is not None:
-            if any(keyword in message.text for keyword in KEYWORDS.split(',')):
+            if any(keyword in message.text.lower()
+                   for keyword in KEYWORDS.split(',')):
                 matches.append(message)
 
     return matches
