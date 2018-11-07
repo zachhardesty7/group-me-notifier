@@ -43,10 +43,16 @@ try:
     GROUPME_GROUP_IDS = os.getenv('GROUPME_GROUP_IDS') or DATA['GROUPME_GROUP_IDS']
     if GROUPME_GROUP_IDS:
         GROUPME_GROUP_IDS = GROUPME_GROUP_IDS.split(',')
-    # US/Central
-    LOCAL_TIMEZONE = os.getenv('LOCAL_TIMEZONE') or DATA['LOCAL_TIMEZONE']
     # comma deliminated string of search terms
     KEYWORDS = os.getenv('KEYWORDS') or DATA['KEYWORDS']
+    IGNORED_USERS = os.getenv('IGNORED_USERS') or DATA['IGNORED_USERS']
+    # 123456789012345678,123456789012345678,123456789012345678,123456789012345678
+    LAST_MESSAGE_IDS = os.getenv('LAST_MESSAGE_IDS') or DATA['LAST_MESSAGE_IDS']
+    if LAST_MESSAGE_IDS:
+        LAST_MESSAGE_IDS = LAST_MESSAGE_IDS.split(',')
+
+    # US/Central
+    LOCAL_TIMEZONE = os.getenv('LOCAL_TIMEZONE') or DATA['LOCAL_TIMEZONE']
     EMAIL_TO_NAME = os.getenv('EMAIL_TO_NAME') or DATA['EMAIL_TO_NAME']
     EMAIL_TO_ADDRESS = os.getenv('EMAIL_TO_ADDRESS') or DATA['EMAIL_TO_ADDRESS']
     EMAIL_FROM_ADDRESS = os.getenv('EMAIL_FROM_ADDRESS') or DATA['EMAIL_FROM_ADDRESS']
@@ -60,10 +66,6 @@ try:
     HEROKU_ACCESS_TOKEN = os.getenv('HEROKU_ACCESS_TOKEN') or DATA['HEROKU_ACCESS_TOKEN']
     HEROKU_APP_ID = os.getenv('HEROKU_APP_ID') or DATA['HEROKU_APP_ID']
     CLIENT = Client.from_token(GROUPME_TOKEN)
-    # 123456789012345678,123456789012345678,123456789012345678,123456789012345678
-    LAST_MESSAGE_IDS = os.getenv('LAST_MESSAGE_IDS') or DATA['LAST_MESSAGE_IDS']
-    if LAST_MESSAGE_IDS:
-        LAST_MESSAGE_IDS = LAST_MESSAGE_IDS.split(',')
 except NameError:
     LOGGER.error('***all necessary global config not defined, see below***')
     raise
@@ -91,6 +93,7 @@ def main():
             LAST_MESSAGE_IDS[i] = message.id
             break
 
+        # add group name to individual message data
         for message in newMessages:
             message.group = group.name
             allMessages.append(message)
@@ -132,9 +135,9 @@ def buildEmail(messages):
     return body
 
 
-def sendEmail(emailBody, numMsgs):
+def sendEmail(emailBody, numMessages):
     emailMsg = MIMEMultipart('alternative')
-    emailMsg['Subject'] = 'GroupMe Digest - {0} New Matches'.format(numMsgs)
+    emailMsg['Subject'] = 'GroupMe Digest - {0} New Matches'.format(numMessages)
     emailMsg['From'] = 'GroupMe Monitor'
     emailMsg['To'] = EMAIL_TO_NAME
 
@@ -152,11 +155,15 @@ def sendEmail(emailBody, numMsgs):
 
 def filterMessages(messages):
     matches = []
+    keywords = KEYWORDS.split(',')
+    users = IGNORED_USERS.split(',')
 
     for message in messages:
         if message.text is not None:
-            if any(keyword in message.text.lower()
-                   for keyword in KEYWORDS.split(',')):
+            name = message.name.lower()
+            body = message.text.lower()
+            if (any(keyword in body for keyword in keywords)
+                    and not any(user == name for user in users)):
                 matches.append(message)
 
     return matches
