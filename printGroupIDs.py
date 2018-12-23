@@ -2,15 +2,8 @@
 import os
 # to use secret file local data
 import json
-import logging
 # GroupMe python wrapper
 from groupy.client import Client
-
-# initialize logger
-DEBUG = False
-if DEBUG:
-    logging.basicConfig(level=logging.INFO)
-LOGGER = logging.getLogger(__name__)
 
 # import json file if present
 try:
@@ -19,9 +12,7 @@ try:
         if not DATA:
             DATA = {}
 except (NameError, FileNotFoundError):
-    LOGGER.warning(
-        'no secret.json file present in project root, ignoring update')
-
+    print('WARNING: no secret.json file present in project root, ignoring update')
 
 # config vars
 # os.environ == (heroku) environment global vars
@@ -32,8 +23,7 @@ try:
     GROUPME_TOKEN = os.getenv('GROUPME_TOKEN') or DATA['GROUPME_TOKEN']
     CLIENT = Client.from_token(GROUPME_TOKEN)
 except NameError:
-    LOGGER.error('***all necessary global config not defined, see below***')
-    raise
+    raise Exception('***all necessary global config not defined***')
 
 
 def main():

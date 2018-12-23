@@ -7,7 +7,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 # to use secret file local data
 import json
-import logging
 # to update environ var w Heroku
 import requests
 # GroupMe python wrapper
@@ -15,11 +14,8 @@ from groupy.client import Client
 # for timezone conversions
 from pytz import timezone
 
-# initialize logger
+# change for slightly more verbose logging
 DEBUG = False
-if DEBUG:
-    logging.basicConfig(level=logging.INFO)
-LOGGER = logging.getLogger(__name__)
 
 # import json file if present
 try:
@@ -28,7 +24,7 @@ try:
         if not DATA:
             DATA = {}
 except (NameError, FileNotFoundError):
-    LOGGER.warning('no secret.json file present in project root, ignoring update')
+    print('WARNING: no secret.json file present in project root, ignoring update')
 
 # Use clock.py to run program every so often in Heroku
 
@@ -67,8 +63,7 @@ try:
     HEROKU_APP_ID = os.getenv('HEROKU_APP_ID') or DATA['HEROKU_APP_ID']
     CLIENT = Client.from_token(GROUPME_TOKEN)
 except NameError:
-    LOGGER.error('***all necessary global config not defined, see below***')
-    raise
+    raise Exception('***all necessary global config not defined***')
 
 
 def main():
@@ -83,40 +78,40 @@ def main():
             if g.id == groupID:
                 group = g
 
-        last = LAST_MESSAGE_IDS[i]
-        if last == 0:
-            last = initializeLastID(group, i)
-        newMessages = getMessages(group, last)
+        if not group:
+            print('WARNING: skipping invalid groupID: %s' % groupID)
+        else:
+            last = LAST_MESSAGE_IDS[i]
+            if last == 0:
+                last = initializeLastID(group, i)
+            newMessages = group.messages.list_since(last).autopage()
 
-        # generators cannot be indexed
-        for message in newMessages:
-            LAST_MESSAGE_IDS[i] = message.id
-            break
+            # generators cannot be indexed
+            # update env var with most recent message id
+            for message in newMessages:
+                LAST_MESSAGE_IDS[i] = message.id
+                break
 
-        # add group name to individual message data
-        for message in newMessages:
-            message.group = group.name
-            allMessages.append(message)
-
-    LOGGER.info('\nSTART ALL MESSAGES:')
-    for message in allMessages:
-        LOGGER.info(message)
+            # add group name to individual message data
+            # not incl by default in Groupy wrapper
+            for message in newMessages:
+                message.group = group.name
+                allMessages.append(message)
 
     matches = filterMessages(allMessages)
 
-    LOGGER.info('\nSTART MATCHES:')
-    for message in matches:
-        LOGGER.info(message)
+    if not matches:
+        print('INFO: no new matches')
+    elif DEBUG:
+        print('\nINFO: MATCHED MESSAGES:')
+        for message in matches:
+            print(message)
+    else:
+        emailBody = buildEmail(matches)
+        sendEmail(emailBody, len(matches))
+        print('INFO: email sent with %i matches' % len(matches))
 
-    if not DEBUG:
-        if matches:
-            emailBody = buildEmail(matches)
-            sendEmail(emailBody, len(matches))
-            print('email sent with %i matches' % len(matches))
-        else:
-            print('no new matches')
-
-    updateLastSeenMessage() # will restart program
+    updateLastSeenMessage() # will restart program on heroku
 
 
 def buildEmail(messages):
@@ -169,22 +164,9 @@ def filterMessages(messages):
     return matches
 
 
-def getMessages(group, lastID):
-    try:
-        # use list_since().autopage() instead of list_all_after()
-        # to get most recent messages first
-        return group.messages.list_since(lastID).autopage()
-    except: # pylint: disable=W0702
-        # unsure of error type when raised by groupy
-        # error appears spontaneously with no apparent reason
-        LOGGER.warning('http authentication error, retrying')
-        return getMessages(group, lastID)
-
-
 # if there is no most recent ID, set it now to most recent message
 # prevents dangerously long json responses from searching entire group
 def initializeLastID(group, i):
-    LOGGER.log('now initialized, new messages will show in notification email')
     recentMessages = group.messages.list()
     for message in recentMessages:
         LAST_MESSAGE_IDS[i] = message.id
@@ -201,9 +183,9 @@ def updateLastSeenMessage():
         with open("secret.json", "w") as f2:
             json.dump(DATA, f2)
     except (NameError, FileNotFoundError):
-        LOGGER.warning('no secret.json file present in project root, ignoring update')
+        print('WARNING: no secret.json file present in project root, ignoring update')
 
-    if USE_HEROKU_HOSTING.lower() == 'true':
+    if USE_HEROKU_HOSTING.lower() == 'true': # heroku vars are strings
         url = 'https://api.heroku.com/apps/' + HEROKU_APP_ID + '/config-vars'
 
         headers = {
