@@ -24,7 +24,7 @@ try:
         if not DATA:
             DATA = {}
 except (NameError, FileNotFoundError):
-    print('WARNING: no secret.json file present in project root, ignoring update')
+    print('WARNING: no secret.json file present in project root, trying to use environment vars')
 
 # Use clock.py to run program every so often in Heroku
 
