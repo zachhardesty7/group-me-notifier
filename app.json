@@ -1,0 +1,58 @@
+{
+  "name": "groupme-notifier",
+  "description": "send email notifications for any given trigger words in a given GroupMe discussion",
+  "website": "https://zachhardesty.com",
+  "repository": "https://github.com/zachhardesty7/groupme-notifier",
+  "env": {
+    "GROUPME_TOKEN": {
+      "description": "secret key for accessing groupme api"
+    },
+    "GROUPME_GROUP_NAMES": {
+      "description": "comma deliminated list of target groupme group names to display for more informative emails"
+    },
+    "GROUPME_GROUP_IDS": {
+      "description": "comma deliminated list of target groupme group IDs"
+    },
+    "HEROKU_ACCESS_TOKEN": {
+      "description": "secret key for accessing heroku api"
+    },
+    "LOCAL_TIMEZONE": {
+      "description": "timezone",
+      "value": "US/Central"
+    },
+    "LAST_MESSAGE_IDS": {
+      "description": "comma deliminated list of the most recent message ID for each target groupme group"
+    },
+    "USE_HEROKU_HOSTING": "true",
+    "HEROKU_APP_ID": {
+      "description": "id for heroku api"
+    },
+    "KEYWORDS": {
+      "description": "GOOD STUFF: a comma deliminated list of target keywords to trigger a notification"
+    },
+    "IGNORED_USERS": {
+      "description": "filter out certain users' messages"
+    },
+    "EMAIL_TO_NAME": {
+      "description": "your name"
+    },
+    "EMAIL_TO_ADDRESS": {
+      "description": "your email address"
+    },
+    "EMAIL_FROM_ADDRESS": {
+      "description": "sending email address"
+    },
+    "EMAIL_HOST_URL": {
+      "description": "sending email host url"
+    },
+    "EMAIL_HOST_USERNAME": {
+      "description": "sending email host username"
+    },
+    "EMAIL_HOST_PASSWORD": {
+      "description": "sending email host port"
+    },
+    "EMAIL_HOST_PORT": {
+      "description": "sending email host password"
+    },
+  }
+}

@@ -23,6 +23,7 @@ try:
         DATA = json.load(f)
         if not DATA:
             DATA = {}
+# TODO: refactor out excess try except blocks
 except (NameError, FileNotFoundError):
     print('WARNING: no secret.json file present in project root, trying to use environment vars')
 

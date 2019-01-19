@@ -1,7 +1,9 @@
-# group-me-notifier
+# groupme-notifier
 
 send email notifications for any given trigger words in a given GroupMe discussion
-more docs on basic setup coming soon for those unfamiliar with Heroku
+very very naive deploy button, more tutorial coming soon
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 Uses Groupy python wrapper for GroupMe api - Docs:
 http://groupy.readthedocs.io/en/latest/pages/api.html
