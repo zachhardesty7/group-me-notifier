@@ -26,10 +26,10 @@ except NameError:
     raise Exception('***all necessary global config not defined***')
 
 
-def main():
+def getIDs():
     for group in CLIENT.groups.list(omit="memberships").autopage():
         print(group.name + ' (' + group.id + ')')
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__getIDs__':
+    getIDs()

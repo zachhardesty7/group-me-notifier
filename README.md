@@ -1,7 +1,7 @@
 # groupme-notifier
 
 send email notifications for any given trigger words in a given GroupMe discussion
-very very naive deploy button, more tutorial coming soon
+button deploy works but requires a multitude of tokens. fields are well described and include links.
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 

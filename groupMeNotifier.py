@@ -14,6 +14,9 @@ from groupy.client import Client
 # for timezone conversions
 from pytz import timezone
 
+# list out ID's of groups the user is in
+from printGroupIDs import getIDs
+
 # change for slightly more verbose logging
 DEBUG = False
 
@@ -70,49 +73,51 @@ except NameError:
 def main():
     allMessages = []
 
-    for i, groupID in enumerate(GROUPME_GROUP_IDS):
-        group = {}
-        # list_all fails more than list().autopage()
-        # retrieving group by ID doesn't allow "omit" param
-        # without "omit" large groups overflow json request max size
-        for g in CLIENT.groups.list(omit="memberships").autopage():
-            if g.id == groupID:
-                group = g
-
-        if not group:
-            print('WARNING: skipping invalid groupID: %s' % groupID)
-        else:
-            last = LAST_MESSAGE_IDS[i]
-            if last == 0:
-                last = initializeLastID(group, i)
-            newMessages = group.messages.list_since(last).autopage()
-
-            # generators cannot be indexed
-            # update env var with most recent message id
-            for message in newMessages:
-                LAST_MESSAGE_IDS[i] = message.id
-                break
-
-            # add group name to individual message data
-            # not incl by default in Groupy wrapper
-            for message in newMessages:
-                message.group = group.name
-                allMessages.append(message)
-
-    matches = filterMessages(allMessages)
-
-    if not matches:
-        print('INFO: no new matches')
-    elif DEBUG:
-        print('\nINFO: MATCHED MESSAGES:')
-        for message in matches:
-            print(message)
+    if not GROUPME_GROUP_IDS:
+        getIDs()
     else:
-        emailBody = buildEmail(matches)
-        sendEmail(emailBody, len(matches))
-        print('INFO: email sent with %i matches' % len(matches))
+        for i, groupID in enumerate(GROUPME_GROUP_IDS):
+            group = {}
+            # list_all fails more than list().autopage()
+            # retrieving group by ID doesn't allow "omit" param
+            # without "omit" large groups overflow json request max size
+            for g in CLIENT.groups.list(omit="memberships").autopage():
+                if g.id == groupID:
+                    group = g
 
-    updateLastSeenMessage() # will restart program on heroku
+            if not group:
+                print('WARNING: skipping invalid groupID: %s' % groupID)
+            else:
+                if not LAST_MESSAGE_IDS or LAST_MESSAGE_IDS[i] == 0:
+                    LAST_MESSAGE_IDS[i] = initializeLastID(group, i)
+                newMessages = group.messages.list_since(last).autopage()
+
+                # generators cannot be indexed
+                # update env var with most recent message id
+                for message in newMessages:
+                    LAST_MESSAGE_IDS[i] = message.id
+                    break
+
+                # add group name to individual message data
+                # not incl by default in Groupy wrapper
+                for message in newMessages:
+                    message.group = group.name
+                    allMessages.append(message)
+
+        matches = filterMessages(allMessages)
+
+        if not matches:
+            print('INFO: no new matches')
+        elif DEBUG:
+            print('\nINFO: MATCHED MESSAGES:')
+            for message in matches:
+                print(message)
+        else:
+            emailBody = buildEmail(matches)
+            sendEmail(emailBody, len(matches))
+            print('INFO: email sent with %i matches' % len(matches))
+
+        updateLastSeenMessage() # will restart program on heroku
 
 
 def buildEmail(messages):
@@ -151,8 +156,12 @@ def sendEmail(emailBody, numMessages):
 
 def filterMessages(messages):
     matches = []
-    keywords = KEYWORDS.split(',')
-    users = IGNORED_USERS.split(',')
+    keywords = []
+    users = []
+    if KEYWORDS:
+        keywords = KEYWORDS.split(',')
+    if IGNORED_USERS:
+        users = IGNORED_USERS.split(',')
 
     for message in messages:
         if message.text is not None:

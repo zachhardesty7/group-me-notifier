@@ -3,35 +3,40 @@
   "description": "send email notifications for any given trigger words in a given GroupMe discussion",
   "website": "https://zachhardesty.com",
   "repository": "https://github.com/zachhardesty7/groupme-notifier",
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
   "env": {
     "GROUPME_TOKEN": {
-      "description": "secret key for accessing groupme api"
+      "description": "secret key for accessing groupme api, visit here: https://dev.groupme.com/applications/new, fill in fields with junk info and 'Callback URL' with 'localhost.' you want the access token on the next page."
     },
     "GROUPME_GROUP_NAMES": {
-      "description": "comma deliminated list of target groupme group names to display for more informative emails",
+      "description": "comma deliminated list (no spaces) of target groupme group names to display for more informative emails. leave blank unless you know what you're doing.",
       "required": false
     },
     "GROUPME_GROUP_IDS": {
-      "description": "comma deliminated list of target groupme group IDs",
+      "description": "comma deliminated list of target groupme group IDs. will list out possible options on first run.",
       "required": false
     },
     "HEROKU_ACCESS_TOKEN": {
-      "description": "secret key for accessing heroku api"
+      "description": "secret key for accessing heroku api. I think it can be found here: https://dashboard.heroku.com/account toward the bottom, named API key."
     },
     "LOCAL_TIMEZONE": {
       "description": "timezone",
       "value": "US/Central"
     },
     "LAST_MESSAGE_IDS": {
-      "description": "comma deliminated list of the most recent message ID for each target groupme group",
+      "description": "comma deliminated list of the most recent message ID for each target groupme group. leave blank unless you know what you're doing.",
       "required": false
     },
     "USE_HEROKU_HOSTING": "true",
     "HEROKU_APP_ID": {
-      "description": "id for heroku api"
+      "description": "id for heroku api. leave blank until the app is created."
     },
     "KEYWORDS": {
-      "description": "GOOD STUFF: a comma deliminated list of target keywords to trigger a notification",
+      "description": "IMPORTANT: a comma deliminated list of target keywords to trigger a notification",
       "required": false
     },
     "IGNORED_USERS": {
@@ -42,23 +47,23 @@
       "description": "your name"
     },
     "EMAIL_TO_ADDRESS": {
-      "description": "your email address"
+      "description": "your receiving email address"
     },
     "EMAIL_FROM_ADDRESS": {
-      "description": "sending email address"
+      "description": "sending email address, default: use gmail login email"
     },
     "EMAIL_HOST_URL": {
-      "description": "sending email host url, default gmail",
+      "description": "sending email host url, default: use gmail",
       "value": "smtp.gmail.com"
     },
     "EMAIL_HOST_USERNAME": {
-      "description": "sending email host username, default gmail login email"
+      "description": "sending email host username, default: use gmail login email"
     },
     "EMAIL_HOST_PASSWORD": {
-      "description": "sending email host password, default gmail login password"
+      "description": "sending email host password, default: use gmail login password"
     },
     "EMAIL_HOST_PORT": {
-      "description": "sending email host port, default gmail",
+      "description": "sending email host port, defaults: use gmail host port",
       "value": 465
     }
   }
