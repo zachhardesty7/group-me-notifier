@@ -7,3 +7,8 @@ very very naive deploy button, more tutorial coming soon
 
 Uses Groupy python wrapper for GroupMe api - Docs:
 http://groupy.readthedocs.io/en/latest/pages/api.html
+
+info:
+
+https://devcenter.heroku.com/articles/heroku-button
+https://devcenter.heroku.com/articles/app-json-schema

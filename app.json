@@ -8,10 +8,12 @@
       "description": "secret key for accessing groupme api"
     },
     "GROUPME_GROUP_NAMES": {
-      "description": "comma deliminated list of target groupme group names to display for more informative emails"
+      "description": "comma deliminated list of target groupme group names to display for more informative emails",
+      "required": false
     },
     "GROUPME_GROUP_IDS": {
-      "description": "comma deliminated list of target groupme group IDs"
+      "description": "comma deliminated list of target groupme group IDs",
+      "required": false
     },
     "HEROKU_ACCESS_TOKEN": {
       "description": "secret key for accessing heroku api"
@@ -21,17 +23,20 @@
       "value": "US/Central"
     },
     "LAST_MESSAGE_IDS": {
-      "description": "comma deliminated list of the most recent message ID for each target groupme group"
+      "description": "comma deliminated list of the most recent message ID for each target groupme group",
+      "required": false
     },
     "USE_HEROKU_HOSTING": "true",
     "HEROKU_APP_ID": {
       "description": "id for heroku api"
     },
     "KEYWORDS": {
-      "description": "GOOD STUFF: a comma deliminated list of target keywords to trigger a notification"
+      "description": "GOOD STUFF: a comma deliminated list of target keywords to trigger a notification",
+      "required": false
     },
     "IGNORED_USERS": {
-      "description": "filter out certain users' messages"
+      "description": "filter out certain users' messages",
+      "required": false
     },
     "EMAIL_TO_NAME": {
       "description": "your name"
@@ -43,16 +48,18 @@
       "description": "sending email address"
     },
     "EMAIL_HOST_URL": {
-      "description": "sending email host url"
+      "description": "sending email host url, default gmail",
+      "value": "smtp.gmail.com"
     },
     "EMAIL_HOST_USERNAME": {
-      "description": "sending email host username"
+      "description": "sending email host username, default gmail login email"
     },
     "EMAIL_HOST_PASSWORD": {
-      "description": "sending email host port"
+      "description": "sending email host password, default gmail login password"
     },
     "EMAIL_HOST_PORT": {
-      "description": "sending email host password"
-    },
+      "description": "sending email host port, default gmail",
+      "value": 465
+    }
   }
 }
